@@ -1,4 +1,5 @@
-import { Menu, Sun, Moon, LogOut } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Menu, Sun, Moon, LogOut, Download } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -14,7 +15,7 @@ const PAGE_TITLES = {
 };
 
 /**
- * Top navigation bar with menu toggle, page title, theme switch, and logout button.
+ * Top navigation bar with menu toggle, page title, theme switch, PWA install, and logout button.
  * @param {Function} onMenuClick - Toggles mobile sidebar
  */
 export default function Navbar({ onMenuClick }) {
@@ -22,6 +23,29 @@ export default function Navbar({ onMenuClick }) {
   const { logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+
+  useEffect(() => {
+    const handler = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) {
+      alert('To install app:\n• On Android: Tap Chrome menu (⋮) -> "Add to Home Screen" or "Install App".\n• On iPhone: Tap Safari Share button (⬆) -> "Add to Home Screen".');
+      return;
+    }
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setDeferredPrompt(null);
+    }
+  };
 
   const page = PAGE_TITLES[location.pathname] || { title: 'Expense Tracker', subtitle: '' };
 
@@ -52,6 +76,17 @@ export default function Navbar({ onMenuClick }) {
 
       {/* Right: Actions */}
       <div className="flex items-center gap-2">
+        {/* PWA Install Button */}
+        <button
+          id="pwa-install-btn"
+          onClick={handleInstallClick}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-gradient-to-r from-primary-600 to-indigo-600 hover:from-primary-700 hover:to-indigo-700 text-white shadow-sm transition-all"
+          title="Install App on Phone / Desktop"
+        >
+          <Download size={14} />
+          <span>Install App</span>
+        </button>
+
         {/* Theme Toggle */}
         <button
           id="theme-toggle-btn"
