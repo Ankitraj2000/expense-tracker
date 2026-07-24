@@ -17,6 +17,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.beans.factory.annotation.Value;
+
 /**
  * Service handling user registration and login with JWT token issuance.
  */
@@ -31,6 +33,9 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final UserDetailsService userDetailsService;
 
+    @Value("${admin.email:admin@expensetracker.com}")
+    private String adminEmail;
+
     /**
      * Registers a new user and returns a JWT token.
      *
@@ -44,7 +49,7 @@ public class AuthService {
             throw new BadRequestException("Email is already registered: " + request.getEmail());
         }
 
-        String role = request.getEmail().toLowerCase().contains("admin") ? "ROLE_ADMIN" : "ROLE_USER";
+        String role = (adminEmail != null && adminEmail.equalsIgnoreCase(request.getEmail().trim())) ? "ROLE_ADMIN" : "ROLE_USER";
 
         User user = User.builder()
                 .name(request.getName())
@@ -88,9 +93,9 @@ public class AuthService {
         String token = jwtUtil.generateToken(userDetails);
 
         String userRole = user.getRole();
-        if (userRole == null || (user.getEmail() != null && user.getEmail().toLowerCase().contains("admin"))) {
-            userRole = "ROLE_ADMIN";
-            user.setRole("ROLE_ADMIN");
+        if (userRole == null) {
+            userRole = "ROLE_USER";
+            user.setRole("ROLE_USER");
             userRepository.save(user);
         }
 
