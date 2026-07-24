@@ -1,0 +1,24 @@
+{
+  "short_name": "ExpenseTracker",
+  "name": "Expense Tracker — Smart Personal Finance",
+  "description": "Manage your personal finances, track income, expenses, and download PDF reports.",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0f172a",
+  "theme_color": "#4f46e5",
+  "display": "standalone",
+  "orientation": "portrait"
+}
