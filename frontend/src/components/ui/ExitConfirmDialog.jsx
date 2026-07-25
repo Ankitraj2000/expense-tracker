@@ -1,17 +1,14 @@
 import { useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
 
 /**
- * ExitConfirmDialog — Mobile (Android) & Desktop back button interception.
- * Prevents Android gesture/back button from exiting app directly without confirmation.
+ * ExitConfirmDialog — Intercepts mobile & desktop back button to ask "Exit App?".
+ * Closes the application WITHOUT logging out the user, so login session remains intact.
  */
 export default function ExitConfirmDialog() {
   const [showDialog, setShowDialog] = useState(false);
   const location = useLocation();
-  const navigate = useNavigate();
-  const { logout } = useAuth();
 
   useEffect(() => {
     // Intercept back button when user is on dashboard or root page
@@ -21,10 +18,9 @@ export default function ExitConfirmDialog() {
     // Push dummy history entry for Android back button handling
     window.history.pushState({ pwaGuard: true }, '', window.location.href);
 
-    const handlePopState = (e) => {
-      // Show confirmation popup on mobile back press
+    const handlePopState = () => {
       setShowDialog(true);
-      // Re-push history state immediately so Android cannot close the app on next back
+      // Re-push history state so app doesn't close on next back press without clicking Exit
       window.history.pushState({ pwaGuard: true }, '', window.location.href);
     };
 
@@ -37,22 +33,23 @@ export default function ExitConfirmDialog() {
   const handleExit = () => {
     setShowDialog(false);
     
-    // 1. Standard window close (Desktop PWA)
+    // Attempt 1: Standard window close (Works in Desktop & Installed Mobile PWAs)
     try {
       window.close();
     } catch (e) {}
 
-    // 2. Android Chrome PWA hack: mark self as script-opened to allow window.close()
+    // Attempt 2: Android Chrome PWA hack to allow closing window
     try {
       window.open('', '_self', '');
       window.close();
     } catch (e) {}
 
-    // 3. Fallback for mobile browser: Logout & redirect to login (NO BLANK SCREEN!)
+    // Attempt 3: Mobile history exit fallback (NO LOGOUT - preserves user login session)
     setTimeout(() => {
-      logout();
-      navigate('/login', { replace: true });
-    }, 100);
+      try {
+        window.history.go(-window.history.length);
+      } catch (e) {}
+    }, 50);
   };
 
   const handleCancel = () => {
