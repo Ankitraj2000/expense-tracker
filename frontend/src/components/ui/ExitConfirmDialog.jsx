@@ -3,8 +3,8 @@ import { useLocation } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
 
 /**
- * ExitConfirmDialog — Handles back button exit by closing the PWA window,
- * or exiting out to Google search home page if running in a standard browser tab.
+ * ExitConfirmDialog — Handles exit synchronously upon button click.
+ * Closes PWA window or navigates out to Google immediately without setTimeout delays.
  */
 export default function ExitConfirmDialog() {
   const [showDialog, setShowDialog] = useState(false);
@@ -41,7 +41,7 @@ export default function ExitConfirmDialog() {
     }
     setShowDialog(false);
 
-    // 1. Attempt window close (Works in Mobile & Desktop installed PWAs)
+    // Synchronous execution (No setTimeout) so browser click event thread executes exit immediately
     try {
       window.close();
     } catch (e) {}
@@ -51,12 +51,8 @@ export default function ExitConfirmDialog() {
       if (win) win.close();
     } catch (e) {}
 
-    // 2. If Chrome browser blocks tab closing, exit out of Expense Tracker to Google home page
-    setTimeout(() => {
-      if (!window.closed) {
-        window.location.href = 'https://www.google.com';
-      }
-    }, 150);
+    // Navigate out immediately
+    window.location.href = 'https://www.google.com';
   };
 
   const handleCancel = () => {
