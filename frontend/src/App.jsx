@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+import ExitConfirmDialog from './components/ui/ExitConfirmDialog';
 
 // Layout
 import Layout from './components/layout/Layout';
@@ -111,6 +112,7 @@ export default function App() {
     <ThemeProvider>
       <AuthProvider>
         <AppRoutes />
+        <ExitConfirmDialog />
         <Toaster
           position="top-right"
           gutter={8}
