@@ -1,28 +1,38 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
 
 /**
- * ExitConfirmDialog — Intercepts mobile & desktop back button to ask "Exit App?".
- * Closes the application WITHOUT logging out the user, so login session remains intact.
+ * ExitConfirmDialog — Intercepts back button to confirm exit.
+ * Removes popstate traps during exit so browser can actually close/exit the app.
  */
 export default function ExitConfirmDialog() {
   const [showDialog, setShowDialog] = useState(false);
   const location = useLocation();
 
+  const isExitingRef = useRef(false);
+  const handlePopStateRef = useRef(null);
+
   useEffect(() => {
-    // Intercept back button when user is on dashboard or root page
     const isRoot = location.pathname === '/dashboard' || location.pathname === '/';
     if (!isRoot) return;
 
-    // Push dummy history entry for Android back button handling
+    // Reset exit flag on mount
+    isExitingRef.current = false;
+
+    // Push dummy history guard
     window.history.pushState({ pwaGuard: true }, '', window.location.href);
 
-    const handlePopState = () => {
+    const handlePopState = (e) => {
+      // If user clicked Exit App, do not trap history anymore
+      if (isExitingRef.current) return;
+
       setShowDialog(true);
-      // Re-push history state so app doesn't close on next back press without clicking Exit
+      // Re-push history guard so back button shows modal instead of silent exit
       window.history.pushState({ pwaGuard: true }, '', window.location.href);
     };
+
+    handlePopStateRef.current = handlePopState;
 
     window.addEventListener('popstate', handlePopState);
     return () => {
@@ -31,23 +41,28 @@ export default function ExitConfirmDialog() {
   }, [location.pathname]);
 
   const handleExit = () => {
+    // 1. Mark as exiting & remove event listener so popstate doesn't trap us in a loop
+    isExitingRef.current = true;
+    if (handlePopStateRef.current) {
+      window.removeEventListener('popstate', handlePopStateRef.current);
+    }
     setShowDialog(false);
-    
-    // Attempt 1: Standard window close (Works in Desktop & Installed Mobile PWAs)
+
+    // 2. Attempt standard window.close()
     try {
       window.close();
     } catch (e) {}
 
-    // Attempt 2: Android Chrome PWA hack to allow closing window
+    // 3. Attempt script-open window.close()
     try {
-      window.open('', '_self', '');
-      window.close();
+      const win = window.open('', '_self');
+      if (win) win.close();
     } catch (e) {}
 
-    // Attempt 3: Mobile history exit fallback (NO LOGOUT - preserves user login session)
+    // 4. Un-trap history and navigate back to exit PWA/browser tab
     setTimeout(() => {
       try {
-        window.history.go(-window.history.length);
+        window.history.go(-50);
       } catch (e) {}
     }, 50);
   };
