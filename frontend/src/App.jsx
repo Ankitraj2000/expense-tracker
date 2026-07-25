@@ -60,6 +60,8 @@ function AdminRoute({ children }) {
 function AppRoutes() {
   return (
     <BrowserRouter>
+      {/* Exit dialog must be inside BrowserRouter to use useLocation */}
+      <ExitConfirmDialog />
       <Routes>
         {/* Root redirect */}
         <Route path="/" element={<RootRedirect />} />
@@ -112,7 +114,6 @@ export default function App() {
     <ThemeProvider>
       <AuthProvider>
         <AppRoutes />
-        <ExitConfirmDialog />
         <Toaster
           position="top-right"
           gutter={8}
