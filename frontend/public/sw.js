@@ -1,11 +1,11 @@
-const CACHE_NAME = 'expense-tracker-v3';
+const CACHE_NAME = 'expense-tracker-v4';
 const ASSETS = [
   '/',
   '/index.html',
-  '/manifest.json',
-  '/favicon.png',
-  '/icon-192.png',
-  '/icon-512.png'
+  '/manifest.json?v=2',
+  '/app-favicon.png?v=2',
+  '/app-icon-192.png?v=2',
+  '/app-icon-512.png?v=2'
 ];
 
 self.addEventListener('install', (e) => {

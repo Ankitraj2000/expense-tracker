@@ -3,8 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
 
 /**
- * ExitConfirmDialog — Handles Android / Desktop back button interception.
- * Displays "Exit App?" confirmation popup when user presses back on main page.
+ * ExitConfirmDialog — Intercepts mobile & desktop PWA back button on main pages
+ * and displays a confirmation dialog instead of exiting instantly or showing blank screen.
  */
 export default function ExitConfirmDialog() {
   const [showDialog, setShowDialog] = useState(false);
@@ -12,42 +12,42 @@ export default function ExitConfirmDialog() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Intercept back button
+    // Intercept back button when user is on root or dashboard page
+    const isRootPage = location.pathname === '/dashboard' || location.pathname === '/';
+    if (!isRootPage) return;
+
+    // Push a state so back button fires popstate instead of instantly closing app
+    window.history.pushState({ pwaExitGuard: true }, '');
+
     const handlePopState = (e) => {
-      // If we are on main root pages (like dashboard, login), or if history back reached top
-      if (location.pathname === '/dashboard' || location.pathname === '/' || location.pathname === '/login') {
-        // Prevent instant close, show confirmation dialog
-        setShowDialog(true);
-        // Push state back to prevent browser from instantly navigating away / closing
-        window.history.pushState({ pwaExitGuard: true }, '', window.location.href);
-      }
+      setShowDialog(true);
+      // Re-push state so modal stays open safely
+      window.history.pushState({ pwaExitGuard: true }, '');
     };
 
-    // Push initial guard state on root page mount
-    if (location.pathname === '/dashboard' || location.pathname === '/') {
-      window.history.pushState({ pwaExitGuard: true }, '', window.location.href);
-    }
-
     window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
   }, [location.pathname]);
 
   const handleExit = () => {
     setShowDialog(false);
-    // Try to close window (PWA mode) or navigate away
     try {
       window.close();
-    } catch (e) {}
-    // Fallback: redirect to blank page or logout
+    } catch (err) {}
+    
+    // Smooth fallback without white blank screen:
+    // If window.close() wasn't allowed by browser, navigate to login
     setTimeout(() => {
-      window.location.href = 'about:blank';
-    }, 100);
+      if (!window.closed) {
+        navigate('/login', { replace: true });
+      }
+    }, 150);
   };
 
   const handleCancel = () => {
     setShowDialog(false);
-    // Re-add guard state for next time
-    window.history.pushState({ pwaExitGuard: true }, '', window.location.href);
   };
 
   if (!showDialog) return null;
@@ -62,7 +62,7 @@ export default function ExitConfirmDialog() {
 
       {/* Dialog Modal */}
       <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 animate-fade-in">
-        <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden transform transition-all scale-100">
+        <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden transform transition-all">
 
           {/* Header */}
           <div className="flex flex-col items-center pt-7 pb-3 px-6 text-center">
