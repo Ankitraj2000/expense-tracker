@@ -130,6 +130,13 @@ public class TransactionService {
         transactionRepository.delete(tx);
     }
 
+    // ── Delete All (Reset) ────────────────────────────────────────
+
+    @Transactional
+    public void deleteAll(Long userId) {
+        transactionRepository.deleteAllByUserId(userId);
+    }
+
     // ── Helpers ───────────────────────────────────────────────────
 
     private TransactionType parseType(String type) {

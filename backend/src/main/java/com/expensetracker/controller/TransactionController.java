@@ -110,6 +110,19 @@ public class TransactionController {
         return ResponseEntity.ok(Map.of("message", "Transaction deleted successfully"));
     }
 
+    /**
+     * DELETE /api/transactions
+     * Deletes ALL transactions for the authenticated user (reset/clear all data).
+     */
+    @DeleteMapping
+    public ResponseEntity<Map<String, String>> deleteAll(
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        Long userId = resolveUserId(userDetails);
+        transactionService.deleteAll(userId);
+        return ResponseEntity.ok(Map.of("message", "All transactions deleted successfully"));
+    }
+
     // ── Helper ────────────────────────────────────────────────────
 
     private Long resolveUserId(UserDetails userDetails) {

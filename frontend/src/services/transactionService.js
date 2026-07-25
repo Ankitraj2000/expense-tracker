@@ -44,4 +44,12 @@ export const transactionService = {
     const response = await api.delete(`/api/transactions/${id}`);
     return response.data;
   },
+
+  /**
+   * Delete ALL transactions for the current user (reset/clear all data).
+   */
+  deleteAll: async () => {
+    const response = await api.delete('/api/transactions');
+    return response.data;
+  },
 };

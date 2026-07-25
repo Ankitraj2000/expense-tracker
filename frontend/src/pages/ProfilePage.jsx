@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { userService } from '../services/userService';
+import { transactionService } from '../services/transactionService';
 import { useAuth } from '../context/AuthContext';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
 import { useNavigate } from 'react-router-dom';
-import { User, Mail, Lock, Calendar, Shield, Eye, EyeOff, LogOut } from 'lucide-react';
+import { User, Mail, Lock, Calendar, Shield, Eye, EyeOff, LogOut, Trash2, AlertTriangle } from 'lucide-react';
 import { getInitials, formatDate } from '../utils/formatters';
 import toast from 'react-hot-toast';
 
@@ -24,6 +25,29 @@ export default function ProfilePage() {
   const [showPass, setShowPass] = useState({ current: false, new: false, confirm: false });
 
   const [profileErrors, setProfileErrors] = useState({});
+
+  // Clear all data state
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [clearInput, setClearInput] = useState('');
+  const [clearLoading, setClearLoading] = useState(false);
+
+  const handleClearAllData = async () => {
+    if (clearInput !== 'DELETE') {
+      toast.error('Please type DELETE to confirm');
+      return;
+    }
+    setClearLoading(true);
+    try {
+      await transactionService.deleteAll();
+      toast.success('All transactions deleted successfully! Fresh start 🚀');
+      setShowClearConfirm(false);
+      setClearInput('');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to clear data');
+    } finally {
+      setClearLoading(false);
+    }
+  };
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -183,6 +207,62 @@ export default function ProfilePage() {
             Change Password
           </Button>
         </form>
+      </div>
+
+      {/* Danger Zone Card */}
+      <div className="card border-orange-200 dark:border-orange-900/40 bg-orange-50/30 dark:bg-orange-950/10">
+        <h3 className="font-semibold text-orange-600 dark:text-orange-400 mb-1 flex items-center gap-2">
+          <AlertTriangle size={18} /> Danger Zone
+        </h3>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+          Permanently delete all your income and expense records. Your account will remain active.
+        </p>
+
+        {!showClearConfirm ? (
+          <Button
+            id="clear-all-data-btn"
+            variant="danger"
+            onClick={() => setShowClearConfirm(true)}
+          >
+            <Trash2 size={16} /> Clear All Transactions
+          </Button>
+        ) : (
+          <div className="space-y-3 border border-red-300 dark:border-red-700 rounded-xl p-4 bg-red-50/50 dark:bg-red-950/20">
+            <p className="text-sm font-medium text-red-600 dark:text-red-400">
+              ⚠️ This will permanently delete <strong>ALL</strong> your transactions. This cannot be undone!
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Type <strong className="text-red-500">DELETE</strong> below to confirm:
+            </p>
+            <input
+              id="clear-confirm-input"
+              type="text"
+              value={clearInput}
+              onChange={(e) => setClearInput(e.target.value)}
+              placeholder="Type DELETE here"
+              className="input-base w-full"
+              autoComplete="off"
+            />
+            <div className="flex gap-2">
+              <Button
+                id="confirm-clear-btn"
+                variant="danger"
+                loading={clearLoading}
+                onClick={handleClearAllData}
+                disabled={clearInput !== 'DELETE'}
+              >
+                <Trash2 size={16} /> Yes, Delete Everything
+              </Button>
+              <Button
+                id="cancel-clear-btn"
+                variant="secondary"
+                onClick={() => { setShowClearConfirm(false); setClearInput(''); }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Logout Card */}

@@ -29,6 +29,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
     Page<Transaction> findByUserId(Long userId, Pageable pageable);
 
+    void deleteAllByUserId(Long userId);
+
     // ── Filtered search with keyword, type, category, date range ─
 
     @Query(value = """
