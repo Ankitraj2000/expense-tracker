@@ -1,25 +1,31 @@
 import { useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 /**
- * ExitConfirmDialog — Traps the mobile/desktop back button so it CANNOT close the app automatically.
- * Back button will ALWAYS trigger this confirmation dialog.
- * Only clicking the "Exit App" button inside the modal will exit the app.
+ * ExitConfirmDialog — Intercepts back button on root/dashboard pages
+ * to ask "Exit App?" instead of closing or showing a blank screen.
  */
 export default function ExitConfirmDialog() {
   const [showDialog, setShowDialog] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { logout } = useAuth();
 
   useEffect(() => {
-    // Push guard state to prevent back button from exiting app directly
-    window.history.pushState({ appLock: true }, '', window.location.href);
+    // Only intercept back button when user is on dashboard or root landing page
+    const isRoot = location.pathname === '/dashboard' || location.pathname === '/';
+    if (!isRoot) return;
+
+    // Push guard state once on root mount to catch back press
+    window.history.pushState({ pwaGuard: true }, '', window.location.href);
 
     const handlePopState = () => {
-      // Re-push guard state immediately so browser NEVER closes app on back button
-      window.history.pushState({ appLock: true }, '', window.location.href);
-      // Show confirmation dialog
+      // Show confirmation dialog when user presses back on root page
       setShowDialog(true);
+      // Re-push state so user doesn't exit immediately if they hit back again
+      window.history.pushState({ pwaGuard: true }, '', window.location.href);
     };
 
     window.addEventListener('popstate', handlePopState);
@@ -31,28 +37,25 @@ export default function ExitConfirmDialog() {
   const handleExit = () => {
     setShowDialog(false);
     
-    // Attempt 1: Standard PWA window close (Works in installed Android & Windows PWA)
-    try {
-      window.close();
-    } catch (e) {}
+    // Check if running as installed standalone PWA
+    const isStandalone =
+      window.navigator.standalone === true ||
+      window.matchMedia('(display-mode: standalone)').matches;
 
-    // Attempt 2: Self close for webview / browser tabs
-    try {
-      self.close();
-    } catch (e) {}
-
-    // Fallback: If browser prevents script closing, navigate out to exit
-    setTimeout(() => {
-      if (!window.closed) {
-        window.location.replace('about:blank');
-      }
-    }, 100);
+    if (isStandalone) {
+      // In installed PWA, close window
+      try {
+        window.close();
+      } catch (e) {}
+    } else {
+      // In browser mode, log out cleanly and redirect to login page (NO BLANK SCREEN!)
+      logout();
+      navigate('/login', { replace: true });
+    }
   };
 
   const handleCancel = () => {
     setShowDialog(false);
-    // Ensure history lock stays active
-    window.history.pushState({ appLock: true }, '', window.location.href);
   };
 
   if (!showDialog) return null;
