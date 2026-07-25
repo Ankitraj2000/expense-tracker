@@ -3,6 +3,7 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import ExitConfirmDialog from './components/ui/ExitConfirmDialog';
+import UpdateBanner from './components/ui/UpdateBanner';
 
 // Layout
 import Layout from './components/layout/Layout';
@@ -114,6 +115,7 @@ export default function App() {
     <ThemeProvider>
       <AuthProvider>
         <AppRoutes />
+        <UpdateBanner />
         <Toaster
           position="top-right"
           gutter={8}

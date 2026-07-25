@@ -1,63 +1,54 @@
-import { useEffect, useState, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
 
 /**
- * ExitConfirmDialog — Shows "Exit App?" dialog when user presses back
- * while there's no more React Router history to go back to.
- * Must be rendered INSIDE <BrowserRouter> to use useLocation.
- * Works on Android back button & Windows PWA back button.
+ * ExitConfirmDialog — Handles Android / Desktop back button interception.
+ * Displays "Exit App?" confirmation popup when user presses back on main page.
  */
 export default function ExitConfirmDialog() {
   const [showDialog, setShowDialog] = useState(false);
   const location = useLocation();
-  const prevPathRef = useRef(location.pathname);
-  const pendingBackRef = useRef(false);
+  const navigate = useNavigate();
 
-  const isStandalone =
-    window.navigator.standalone === true ||
-    window.matchMedia('(display-mode: standalone)').matches;
-
-  // Push a guard history entry on mount to intercept the "close" back press
   useEffect(() => {
-    if (!isStandalone) return;
-    window.history.pushState({ __pwaGuard: true }, '');
-
-    const handlePopState = () => {
-      // Always re-push guard so app doesn't close
-      window.history.pushState({ __pwaGuard: true }, '');
-      pendingBackRef.current = true;
-
-      // Give React Router ~50ms to process its own navigation
-      setTimeout(() => {
-        if (pendingBackRef.current) {
-          // React Router did NOT navigate → user wants to exit
-          setShowDialog(true);
-          pendingBackRef.current = false;
-        }
-      }, 50);
+    // Intercept back button
+    const handlePopState = (e) => {
+      // If we are on main root pages (like dashboard, login), or if history back reached top
+      if (location.pathname === '/dashboard' || location.pathname === '/' || location.pathname === '/login') {
+        // Prevent instant close, show confirmation dialog
+        setShowDialog(true);
+        // Push state back to prevent browser from instantly navigating away / closing
+        window.history.pushState({ pwaExitGuard: true }, '', window.location.href);
+      }
     };
+
+    // Push initial guard state on root page mount
+    if (location.pathname === '/dashboard' || location.pathname === '/') {
+      window.history.pushState({ pwaExitGuard: true }, '', window.location.href);
+    }
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [isStandalone]);
-
-  // If React Router navigated (location changed), it handled the back press — cancel exit check
-  useEffect(() => {
-    if (pendingBackRef.current && location.pathname !== prevPathRef.current) {
-      pendingBackRef.current = false;
-    }
-    prevPathRef.current = location.pathname;
   }, [location.pathname]);
 
   const handleExit = () => {
-    window.close();
+    setShowDialog(false);
+    // Try to close window (PWA mode) or navigate away
+    try {
+      window.close();
+    } catch (e) {}
+    // Fallback: redirect to blank page or logout
     setTimeout(() => {
       window.location.href = 'about:blank';
     }, 100);
   };
 
-  const handleCancel = () => setShowDialog(false);
+  const handleCancel = () => {
+    setShowDialog(false);
+    // Re-add guard state for next time
+    window.history.pushState({ pwaExitGuard: true }, '', window.location.href);
+  };
 
   if (!showDialog) return null;
 
@@ -65,42 +56,44 @@ export default function ExitConfirmDialog() {
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm animate-fade-in"
+        className="fixed inset-0 z-[99999] bg-black/70 backdrop-blur-md animate-fade-in"
         onClick={handleCancel}
       />
 
-      {/* Dialog — slides up from bottom on mobile */}
-      <div className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center p-4 animate-fade-in">
-        <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+      {/* Dialog Modal */}
+      <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 animate-fade-in">
+        <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden transform transition-all scale-100">
 
           {/* Header */}
-          <div className="flex flex-col items-center pt-8 pb-4 px-6">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center shadow-lg shadow-red-500/30 mb-4">
-              <LogOut size={28} className="text-white" />
+          <div className="flex flex-col items-center pt-7 pb-3 px-6 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center shadow-lg shadow-red-500/30 mb-3">
+              <LogOut size={26} className="text-white" />
             </div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white text-center">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white">
               Exit App?
             </h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400 text-center mt-1">
-              Kya aap Expense Tracker se bahar jaana chahte hain?
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              Kya aap Expense Tracker app se bahar jaana chahte hain?
             </p>
           </div>
 
-          {/* Buttons */}
-          <div className="flex gap-3 px-6 pb-8 pt-2">
+          {/* Actions */}
+          <div className="flex gap-3 px-6 pb-6 pt-3">
             <button
               id="exit-cancel-btn"
+              type="button"
               onClick={handleCancel}
-              className="flex-1 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95"
+              className="flex-1 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95 cursor-pointer"
             >
               Cancel
             </button>
             <button
               id="exit-confirm-btn"
+              type="button"
               onClick={handleExit}
-              className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-red-500 to-rose-600 text-white font-semibold text-sm shadow-lg shadow-red-500/30 hover:from-red-600 hover:to-rose-700 transition-all active:scale-95"
+              className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-red-500 to-rose-600 text-white font-semibold text-sm shadow-md shadow-red-500/30 hover:from-red-600 hover:to-rose-700 transition-all active:scale-95 cursor-pointer"
             >
-              Exit
+              Exit App
             </button>
           </div>
         </div>
