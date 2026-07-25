@@ -25,14 +25,35 @@ export default function Navbar({ onMenuClick }) {
   const navigate = useNavigate();
 
   const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [isInstalled, setIsInstalled] = useState(false);
 
   useEffect(() => {
+    // Check if app is already running as installed PWA
+    const isStandalone =
+      window.navigator.standalone === true ||
+      window.matchMedia('(display-mode: standalone)').matches;
+    if (isStandalone) {
+      setIsInstalled(true);
+      return;
+    }
+
     const handler = (e) => {
       e.preventDefault();
       setDeferredPrompt(e);
     };
     window.addEventListener('beforeinstallprompt', handler);
-    return () => window.removeEventListener('beforeinstallprompt', handler);
+
+    // Hide button once app is installed
+    const onAppInstalled = () => {
+      setIsInstalled(true);
+      setDeferredPrompt(null);
+    };
+    window.addEventListener('appinstalled', onAppInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler);
+      window.removeEventListener('appinstalled', onAppInstalled);
+    };
   }, []);
 
   const handleInstallClick = async () => {
@@ -43,6 +64,7 @@ export default function Navbar({ onMenuClick }) {
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
     if (outcome === 'accepted') {
+      setIsInstalled(true);
       setDeferredPrompt(null);
     }
   };
@@ -76,16 +98,18 @@ export default function Navbar({ onMenuClick }) {
 
       {/* Right: Actions */}
       <div className="flex items-center gap-2">
-        {/* PWA Install Button */}
-        <button
-          id="pwa-install-btn"
-          onClick={handleInstallClick}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-gradient-to-r from-primary-600 to-indigo-600 hover:from-primary-700 hover:to-indigo-700 text-white shadow-sm transition-all"
-          title="Install App on Phone / Desktop"
-        >
-          <Download size={14} />
-          <span>Install App</span>
-        </button>
+        {/* PWA Install Button - only show if not already installed */}
+        {!isInstalled && (
+          <button
+            id="pwa-install-btn"
+            onClick={handleInstallClick}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-gradient-to-r from-primary-600 to-indigo-600 hover:from-primary-700 hover:to-indigo-700 text-white shadow-sm transition-all"
+            title="Install App on Phone / Desktop"
+          >
+            <Download size={14} />
+            <span>Install App</span>
+          </button>
+        )}
 
         {/* Theme Toggle */}
         <button
