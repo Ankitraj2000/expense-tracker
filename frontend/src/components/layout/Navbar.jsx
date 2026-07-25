@@ -37,9 +37,15 @@ export default function Navbar({ onMenuClick }) {
       return;
     }
 
+    // Pick up event captured early in index.html (before React mounted)
+    if (window.__deferredInstallPrompt) {
+      setDeferredPrompt(window.__deferredInstallPrompt);
+    }
+
     const handler = (e) => {
       e.preventDefault();
       setDeferredPrompt(e);
+      window.__deferredInstallPrompt = e;
     };
     window.addEventListener('beforeinstallprompt', handler);
 
