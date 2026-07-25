@@ -4,8 +4,8 @@ import { LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 /**
- * ExitConfirmDialog — Intercepts back button on root/dashboard pages
- * to ask "Exit App?" instead of closing or showing a blank screen.
+ * ExitConfirmDialog — Mobile (Android) & Desktop back button interception.
+ * Prevents Android gesture/back button from exiting app directly without confirmation.
  */
 export default function ExitConfirmDialog() {
   const [showDialog, setShowDialog] = useState(false);
@@ -14,17 +14,17 @@ export default function ExitConfirmDialog() {
   const { logout } = useAuth();
 
   useEffect(() => {
-    // Only intercept back button when user is on dashboard or root landing page
+    // Intercept back button when user is on dashboard or root page
     const isRoot = location.pathname === '/dashboard' || location.pathname === '/';
     if (!isRoot) return;
 
-    // Push guard state once on root mount to catch back press
+    // Push dummy history entry for Android back button handling
     window.history.pushState({ pwaGuard: true }, '', window.location.href);
 
-    const handlePopState = () => {
-      // Show confirmation dialog when user presses back on root page
+    const handlePopState = (e) => {
+      // Show confirmation popup on mobile back press
       setShowDialog(true);
-      // Re-push state so user doesn't exit immediately if they hit back again
+      // Re-push history state immediately so Android cannot close the app on next back
       window.history.pushState({ pwaGuard: true }, '', window.location.href);
     };
 
@@ -37,21 +37,22 @@ export default function ExitConfirmDialog() {
   const handleExit = () => {
     setShowDialog(false);
     
-    // Check if running as installed standalone PWA
-    const isStandalone =
-      window.navigator.standalone === true ||
-      window.matchMedia('(display-mode: standalone)').matches;
+    // 1. Standard window close (Desktop PWA)
+    try {
+      window.close();
+    } catch (e) {}
 
-    if (isStandalone) {
-      // In installed PWA, close window
-      try {
-        window.close();
-      } catch (e) {}
-    } else {
-      // In browser mode, log out cleanly and redirect to login page (NO BLANK SCREEN!)
+    // 2. Android Chrome PWA hack: mark self as script-opened to allow window.close()
+    try {
+      window.open('', '_self', '');
+      window.close();
+    } catch (e) {}
+
+    // 3. Fallback for mobile browser: Logout & redirect to login (NO BLANK SCREEN!)
+    setTimeout(() => {
       logout();
       navigate('/login', { replace: true });
-    }
+    }, 100);
   };
 
   const handleCancel = () => {
