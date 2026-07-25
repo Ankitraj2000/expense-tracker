@@ -1,4 +1,4 @@
-const CACHE_NAME = 'expense-tracker-v5';
+const CACHE_NAME = 'expense-tracker-v6';
 const ASSETS = [
   '/',
   '/index.html',
@@ -31,7 +31,6 @@ self.addEventListener('message', (e) => {
   }
 });
 
-// Network-first fetch strategy: Always fetch latest code from network
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
   e.respondWith(
