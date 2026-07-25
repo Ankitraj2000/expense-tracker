@@ -3,8 +3,8 @@ import { useLocation } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
 
 /**
- * ExitConfirmDialog — Intercepts back button to confirm exit.
- * Removes popstate traps during exit so browser can actually close/exit the app.
+ * ExitConfirmDialog — Handles exit by unregistering popstate and stepping back
+ * completely out of the app history stack to the browser home screen / launcher.
  */
 export default function ExitConfirmDialog() {
   const [showDialog, setShowDialog] = useState(false);
@@ -20,15 +20,15 @@ export default function ExitConfirmDialog() {
     // Reset exit flag on mount
     isExitingRef.current = false;
 
-    // Push dummy history guard
+    // Push history guard
     window.history.pushState({ pwaGuard: true }, '', window.location.href);
 
-    const handlePopState = (e) => {
-      // If user clicked Exit App, do not trap history anymore
+    const handlePopState = () => {
+      // If user clicked Exit, do not trap history
       if (isExitingRef.current) return;
 
       setShowDialog(true);
-      // Re-push history guard so back button shows modal instead of silent exit
+      // Re-push history guard
       window.history.pushState({ pwaGuard: true }, '', window.location.href);
     };
 
@@ -41,30 +41,30 @@ export default function ExitConfirmDialog() {
   }, [location.pathname]);
 
   const handleExit = () => {
-    // 1. Mark as exiting & remove event listener so popstate doesn't trap us in a loop
+    // 1. Mark as exiting and remove popstate trap
     isExitingRef.current = true;
     if (handlePopStateRef.current) {
       window.removeEventListener('popstate', handlePopStateRef.current);
     }
     setShowDialog(false);
 
-    // 2. Attempt standard window.close()
+    // 2. Attempt window close (Works in Desktop & Mobile PWA)
     try {
       window.close();
     } catch (e) {}
 
-    // 3. Attempt script-open window.close()
     try {
       const win = window.open('', '_self');
       if (win) win.close();
     } catch (e) {}
 
-    // 4. Un-trap history and navigate back to exit PWA/browser tab
+    // 3. Step back out of app history to browser home page / launcher (NO DASHBOARD REDIRECT!)
     setTimeout(() => {
       try {
-        window.history.go(-50);
+        const backSteps = Math.max(window.history.length, 1);
+        window.history.go(-backSteps);
       } catch (e) {}
-    }, 50);
+    }, 100);
   };
 
   const handleCancel = () => {
