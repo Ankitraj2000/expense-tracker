@@ -1,28 +1,25 @@
 import { useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
 
 /**
- * ExitConfirmDialog — Intercepts mobile & desktop PWA back button on main pages
- * and displays a confirmation dialog instead of exiting instantly or showing blank screen.
+ * ExitConfirmDialog — Traps the mobile/desktop back button so it CANNOT close the app automatically.
+ * Back button will ALWAYS trigger this confirmation dialog.
+ * Only clicking the "Exit App" button inside the modal will exit the app.
  */
 export default function ExitConfirmDialog() {
   const [showDialog, setShowDialog] = useState(false);
   const location = useLocation();
-  const navigate = useNavigate();
 
   useEffect(() => {
-    // Intercept back button when user is on root or dashboard page
-    const isRootPage = location.pathname === '/dashboard' || location.pathname === '/';
-    if (!isRootPage) return;
+    // Push guard state to prevent back button from exiting app directly
+    window.history.pushState({ appLock: true }, '', window.location.href);
 
-    // Push a state so back button fires popstate instead of instantly closing app
-    window.history.pushState({ pwaExitGuard: true }, '');
-
-    const handlePopState = (e) => {
+    const handlePopState = () => {
+      // Re-push guard state immediately so browser NEVER closes app on back button
+      window.history.pushState({ appLock: true }, '', window.location.href);
+      // Show confirmation dialog
       setShowDialog(true);
-      // Re-push state so modal stays open safely
-      window.history.pushState({ pwaExitGuard: true }, '');
     };
 
     window.addEventListener('popstate', handlePopState);
@@ -33,21 +30,29 @@ export default function ExitConfirmDialog() {
 
   const handleExit = () => {
     setShowDialog(false);
+    
+    // Attempt 1: Standard PWA window close (Works in installed Android & Windows PWA)
     try {
       window.close();
-    } catch (err) {}
-    
-    // Smooth fallback without white blank screen:
-    // If window.close() wasn't allowed by browser, navigate to login
+    } catch (e) {}
+
+    // Attempt 2: Self close for webview / browser tabs
+    try {
+      self.close();
+    } catch (e) {}
+
+    // Fallback: If browser prevents script closing, navigate out to exit
     setTimeout(() => {
       if (!window.closed) {
-        navigate('/login', { replace: true });
+        window.location.replace('about:blank');
       }
-    }, 150);
+    }, 100);
   };
 
   const handleCancel = () => {
     setShowDialog(false);
+    // Ensure history lock stays active
+    window.history.pushState({ appLock: true }, '', window.location.href);
   };
 
   if (!showDialog) return null;
@@ -56,7 +61,7 @@ export default function ExitConfirmDialog() {
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-[99999] bg-black/70 backdrop-blur-md animate-fade-in"
+        className="fixed inset-0 z-[99999] bg-black/75 backdrop-blur-md animate-fade-in"
         onClick={handleCancel}
       />
 
