@@ -3,8 +3,8 @@ import { useLocation } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
 
 /**
- * ExitConfirmDialog — Handles exit synchronously upon button click.
- * Closes PWA window or navigates out to Google immediately without setTimeout delays.
+ * ExitConfirmDialog — Handles back button exit by directly closing the app window.
+ * No external redirects or Google navigation.
  */
 export default function ExitConfirmDialog() {
   const [showDialog, setShowDialog] = useState(false);
@@ -41,18 +41,15 @@ export default function ExitConfirmDialog() {
     }
     setShowDialog(false);
 
-    // Synchronous execution (No setTimeout) so browser click event thread executes exit immediately
+    // Direct window close (No external redirects, no google.com)
     try {
+      window.open('', '_self', '');
       window.close();
     } catch (e) {}
 
     try {
-      const win = window.open('', '_self');
-      if (win) win.close();
+      window.close();
     } catch (e) {}
-
-    // Navigate out immediately
-    window.location.href = 'https://www.google.com';
   };
 
   const handleCancel = () => {
