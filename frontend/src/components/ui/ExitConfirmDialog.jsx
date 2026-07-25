@@ -1,17 +1,16 @@
 import { useEffect, useState, useRef } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { LogOut } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { useLocation } from 'react-router-dom';
+import { LogOut, Power, RotateCcw } from 'lucide-react';
 
 /**
- * ExitConfirmDialog — Handles exit in PWA mode by closing the app window,
- * and handles browser mode cleanly without infinite dashboard redirect loops.
+ * ExitConfirmDialog — Handles app exit without clearing user auth session.
+ * In PWA mode: closes app window.
+ * In browser tab mode: shows a clean "App Closed" overlay while preserving login state.
  */
 export default function ExitConfirmDialog() {
   const [showDialog, setShowDialog] = useState(false);
+  const [isAppClosed, setIsAppClosed] = useState(false);
   const location = useLocation();
-  const navigate = useNavigate();
-  const { logout } = useAuth();
 
   const isExitingRef = useRef(false);
   const handlePopStateRef = useRef(null);
@@ -21,8 +20,6 @@ export default function ExitConfirmDialog() {
     if (!isRoot) return;
 
     isExitingRef.current = false;
-
-    // Push history guard
     window.history.pushState({ pwaGuard: true }, '', window.location.href);
 
     const handlePopState = () => {
@@ -46,7 +43,7 @@ export default function ExitConfirmDialog() {
     }
     setShowDialog(false);
 
-    // 1. Attempt window close (Works in installed PWA on Android & Desktop)
+    // 1. Attempt window close (Works in installed Mobile & Desktop PWAs)
     try {
       window.close();
     } catch (e) {}
@@ -56,19 +53,45 @@ export default function ExitConfirmDialog() {
       if (win) win.close();
     } catch (e) {}
 
-    // 2. If running inside a standard browser tab where Chrome blocks window.close(),
-    // safely navigate to login to prevent the infinite dashboard redirect loop
+    // 2. If Chrome browser policy blocks window.close(), show App Closed screen
+    // WITHOUT logging out (preserves user session 100%)
     setTimeout(() => {
       if (!window.closed) {
-        logout();
-        navigate('/login', { replace: true });
+        setIsAppClosed(true);
       }
-    }, 150);
+    }, 100);
   };
 
   const handleCancel = () => {
     setShowDialog(false);
   };
+
+  const handleReopen = () => {
+    setIsAppClosed(false);
+    isExitingRef.current = false;
+    window.history.pushState({ pwaGuard: true }, '', window.location.href);
+  };
+
+  // Fullscreen "App Closed" screen when Chrome blocks tab closing
+  if (isAppClosed) {
+    return (
+      <div className="fixed inset-0 z-[999999] bg-slate-950 text-white flex flex-col items-center justify-center p-6 text-center animate-fade-in">
+        <div className="w-20 h-20 rounded-3xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 mb-6 shadow-2xl">
+          <Power size={36} className="text-red-500" />
+        </div>
+        <h1 className="text-2xl font-bold text-white mb-2">Expense Tracker Closed</h1>
+        <p className="text-sm text-slate-400 max-w-xs mb-8">
+          App close ho chuki hai. Aap is tab ko band kar sakte hain. Aapka login session safe hai.
+        </p>
+        <button
+          onClick={handleReopen}
+          className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm shadow-lg shadow-indigo-600/30 transition-all active:scale-95 cursor-pointer"
+        >
+          <RotateCcw size={16} /> Re-open Expense Tracker
+        </button>
+      </div>
+    );
+  }
 
   if (!showDialog) return null;
 
