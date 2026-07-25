@@ -1,14 +1,17 @@
 import { useEffect, useState, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 /**
- * ExitConfirmDialog — Handles exit by unregistering popstate and stepping back
- * completely out of the app history stack to the browser home screen / launcher.
+ * ExitConfirmDialog — Handles exit in PWA mode by closing the app window,
+ * and handles browser mode cleanly without infinite dashboard redirect loops.
  */
 export default function ExitConfirmDialog() {
   const [showDialog, setShowDialog] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { logout } = useAuth();
 
   const isExitingRef = useRef(false);
   const handlePopStateRef = useRef(null);
@@ -17,18 +20,14 @@ export default function ExitConfirmDialog() {
     const isRoot = location.pathname === '/dashboard' || location.pathname === '/';
     if (!isRoot) return;
 
-    // Reset exit flag on mount
     isExitingRef.current = false;
 
     // Push history guard
     window.history.pushState({ pwaGuard: true }, '', window.location.href);
 
     const handlePopState = () => {
-      // If user clicked Exit, do not trap history
       if (isExitingRef.current) return;
-
       setShowDialog(true);
-      // Re-push history guard
       window.history.pushState({ pwaGuard: true }, '', window.location.href);
     };
 
@@ -41,14 +40,13 @@ export default function ExitConfirmDialog() {
   }, [location.pathname]);
 
   const handleExit = () => {
-    // 1. Mark as exiting and remove popstate trap
     isExitingRef.current = true;
     if (handlePopStateRef.current) {
       window.removeEventListener('popstate', handlePopStateRef.current);
     }
     setShowDialog(false);
 
-    // 2. Attempt window close (Works in Desktop & Mobile PWA)
+    // 1. Attempt window close (Works in installed PWA on Android & Desktop)
     try {
       window.close();
     } catch (e) {}
@@ -58,13 +56,14 @@ export default function ExitConfirmDialog() {
       if (win) win.close();
     } catch (e) {}
 
-    // 3. Step back out of app history to browser home page / launcher (NO DASHBOARD REDIRECT!)
+    // 2. If running inside a standard browser tab where Chrome blocks window.close(),
+    // safely navigate to login to prevent the infinite dashboard redirect loop
     setTimeout(() => {
-      try {
-        const backSteps = Math.max(window.history.length, 1);
-        window.history.go(-backSteps);
-      } catch (e) {}
-    }, 100);
+      if (!window.closed) {
+        logout();
+        navigate('/login', { replace: true });
+      }
+    }, 150);
   };
 
   const handleCancel = () => {
