@@ -25,6 +25,15 @@ public class AuthController {
     private final AuthService authService;
 
     /**
+     * GET /api/auth/health
+     * Health check endpoint for keep-alive services (cron-job.org / UptimeRobot).
+     */
+    @GetMapping("/health")
+    public ResponseEntity<Map<String, String>> healthCheck() {
+        return ResponseEntity.ok(Map.of("status", "UP", "message", "Backend is healthy and awake"));
+    }
+
+    /**
      * POST /api/auth/register
      * Registers a new user account.
      */
