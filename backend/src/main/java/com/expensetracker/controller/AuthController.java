@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.expensetracker.repository.UserRepository;
 import com.expensetracker.dto.ForgotPasswordRequest;
 import java.util.Map;
 
@@ -23,14 +24,21 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
+    private final UserRepository userRepository;
 
     /**
      * GET /api/auth/health
      * Health check endpoint for keep-alive services (cron-job.org / UptimeRobot).
+     * Also queries DB to keep Neon PostgreSQL awake.
      */
     @GetMapping("/health")
-    public ResponseEntity<Map<String, String>> healthCheck() {
-        return ResponseEntity.ok(Map.of("status", "UP", "message", "Backend is healthy and awake"));
+    public ResponseEntity<Map<String, Object>> healthCheck() {
+        long userCount = userRepository.count();
+        return ResponseEntity.ok(Map.of(
+                "status", "UP",
+                "message", "Backend and DB are healthy and awake",
+                "totalUsers", userCount
+        ));
     }
 
     /**
