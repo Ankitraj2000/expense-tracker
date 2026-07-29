@@ -33,14 +33,22 @@ public class DashboardService {
 
         // Total income and expense
         BigDecimal totalIncome  = transactionRepository.sumByUserIdAndType(userId, TransactionType.INCOME);
+        if (totalIncome == null) totalIncome = BigDecimal.ZERO;
+
         BigDecimal totalExpense = transactionRepository.sumByUserIdAndType(userId, TransactionType.EXPENSE);
+        if (totalExpense == null) totalExpense = BigDecimal.ZERO;
+
         BigDecimal totalBalance = totalIncome.subtract(totalExpense);
 
         // Monthly savings
         BigDecimal monthlyIncome  = transactionRepository
                 .sumByUserIdAndTypeAndMonth(userId, "INCOME", currentYear, currentMonth);
+        if (monthlyIncome == null) monthlyIncome = BigDecimal.ZERO;
+
         BigDecimal monthlyExpense = transactionRepository
                 .sumByUserIdAndTypeAndMonth(userId, "EXPENSE", currentYear, currentMonth);
+        if (monthlyExpense == null) monthlyExpense = BigDecimal.ZERO;
+
         BigDecimal monthlySavings = monthlyIncome.subtract(monthlyExpense);
 
         // Recent 5 transactions
@@ -80,7 +88,12 @@ public class DashboardService {
     private Map<String, BigDecimal> buildCategoryMap(List<Object[]> rows) {
         Map<String, BigDecimal> map = new LinkedHashMap<>();
         for (Object[] row : rows) {
-            map.put((String) row[0], (BigDecimal) row[1]);
+            if (row != null && row.length >= 2 && row[0] != null && row[1] != null) {
+                BigDecimal total = row[1] instanceof BigDecimal
+                        ? (BigDecimal) row[1]
+                        : BigDecimal.valueOf(((Number) row[1]).doubleValue());
+                map.put((String) row[0], total);
+            }
         }
         return map;
     }
